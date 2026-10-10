@@ -62,6 +62,10 @@ interface Holidays {
 
 ~~`https://natescarlet.coding.net/p/github/d/holiday-cn/git/raw/master/{年份}.json`~~
 
+## Cloudflare Workers 接口部署
+
+本仓库提供独立的 GitHub Actions 流水线，可将年份 JSON 发布为 Workers 接口，并通过普通 Git 合并同步上游更新，保留本地提交历史。配置方式、接口和同步行为见 [Workers 部署说明](./workers/README.md)。
+
 ## ICalendar 订阅
 
 网址格式参见上一节

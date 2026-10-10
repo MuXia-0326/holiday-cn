@@ -105,3 +105,8 @@ venv.bak/
 
 # editor
 .vscode
+
+# Cloudflare Workers tooling and generated JSON bundle
+workers/node_modules/
+workers/.wrangler/
+workers/src/generated/
