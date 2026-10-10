@@ -28,9 +28,38 @@
 | `GET /` 或 `GET /api/years` | 已发布年份列表和接口说明 |
 | `GET /2026.json` | 与仓库 `2026.json` 等价的完整数据 |
 | `GET /api/holidays/2026` | 同上 |
+| `GET /api/holiday?date=2026-10-01` | 指定日期的节假日、休息日和调休上班信息 |
 | `GET /schema.json` | 原 JSON Schema |
 
 支持 `HEAD`、跨域 `OPTIONS`；未知年份或路径返回 JSON 404，其他请求方法返回 405。成功结果缓存 300 秒，因此发布后客户端可能需要最多五分钟看到更新。年份以文件标题为准，跨年日期的含义参见项目主 README。
+
+### 按日期查询
+
+请求示例：`GET /api/holiday?date=2026-10-01`。
+
+```json
+{
+  "date": "2026-10-01",
+  "weekday": 4,
+  "isWeekend": false,
+  "dataAvailable": true,
+  "isHoliday": true,
+  "isOffDay": true,
+  "isWorkday": false,
+  "isAdjustedWorkday": false,
+  "name": "国庆节",
+  "sourceYear": 2026
+}
+```
+
+- `isHoliday`：是否为公告中明确记录的节假日放假安排（包括安排内的连休日，不表示严格法律意义的法定节日本日）。普通周末为 `false`，调休上班为 `false`。
+- `isOffDay`：是否休息，包含普通周末；判断当天是否需要上班可使用 `isWorkday`。公告中的调休上班优先于周末规则。
+- `isAdjustedWorkday`：是否为公告明确记录的调休上班日。`name` 为公告关联节日，调休上班日也可能有名称。
+- `weekday`：星期日为 0，星期一至星期六为 1–6；日期按中国日历日期处理，不接收时间戳。
+- `dataAvailable`：该年份已有公告来源，或该日期有明确记录。没有公告的空年份文件、缺失年份返回 `false`，四个放假/工作日判断字段返回 `null`，不将未知数据误判为非节假日。仍可返回确定的 `isWeekend`。
+- 查询所有年份文件中的日期记录，同一日期以较新年份的记录为准，`sourceYear` 标识匹配的文件年份；普通日期为 `null`。
+
+必须传入一个真实有效的 `YYYY-MM-DD` 日期，缺失、重复、格式错误或不存在的日期（例如 `2026-02-29`）返回 JSON 400。
 
 ## 自动更新与保留本地修改
 
