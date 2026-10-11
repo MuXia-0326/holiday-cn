@@ -18,36 +18,28 @@
 | `CLOUDFLARE_WORKER_NAME` | `holiday-cn-api` | 建议首次使用一个新的专用 Worker 名称，避免覆盖已有其他服务 |
 | `UPSTREAM_REPOSITORY` | `NateScarlet/holiday-cn` | 上游 GitHub 仓库，格式为 `owner/repo`，同步其 `master` 分支 |
 | `SYNC_UPSTREAM` | 开启 | 设置为字符串 `false` 可关闭上游同步；仍会发布本仓库数据 |
-| `CLOUDFLARE_CUSTOM_DOMAINS` | 未设置 | 自定义域名，多个用英文逗号分隔，如 `holiday.example.com,api.example.com` |
 | `CLOUDFLARE_ROUTES` | 未设置 | Wrangler 路由 JSON 数组，如 `[{"pattern":"example.com/api/*","zone_name":"example.com"}]` |
 | `CLOUDFLARE_WORKERS_DEV` | 使用仓库配置 | 设置 `true` 或 `false`，控制 Workers.dev 地址是否启用 |
 
 然后进入 **Actions → Workers API → Run workflow**，选择 `master`。发布成功后的地址可在部署日志和 Cloudflare 控制台查看，一般为 `https://holiday-cn-api.<你的子域>.workers.dev`。
 
-### 自定义域名和路由
+### Workers 路由
 
-文件配置入口是 `workers/wrangler.jsonc` 的 `routes`，默认为空数组。将其替换为自己的绑定，例如同时配置自定义域名和路径路由：
+在 GitHub Repository variables 中配置 `CLOUDFLARE_ROUTES`，值为完整路由数组：
 
 ```json
-"routes": [
-  { "pattern": "holiday.example.com", "custom_domain": true },
-  { "pattern": "example.com/api/*", "zone_name": "example.com" }
-]
+[{"pattern":"holiday-cn.9990326.xyz/*","zone_name":"9990326.xyz"}]
 ```
 
-将示例域名替换为真实域名，保留自己需要的条目即可。若直接使用文件配置，请不要设置 GitHub 的 `CLOUDFLARE_ROUTES`，否则该变量会替换文件里的路由。
+也可在 `workers/wrangler.jsonc` 的 `routes` 中填写同样的数组。非空的 GitHub 变量会替换文件配置；未设置时使用文件配置。所有路由会明确设置 `custom_domain: false`，部署日志显示 `Workers route:`。
 
-建议在 Repository variables 设置 `CLOUDFLARE_CUSTOM_DOMAINS=holiday.example.com`，需要仅开放自定义域名时同时设置 `CLOUDFLARE_WORKERS_DEV=false`。域名不带 `https://`、路径或通配符，对应域名区域需要在同一 Cloudflare 账户中。
+已移除自定义域名支持，旧的 `CLOUDFLARE_CUSTOM_DOMAINS` 变量不再读取，可以删除。文件配置中的 `custom_domain: true` 会被拒绝。代码不会主动调用 Cloudflare 删除历史自定义域名绑定，需要移除的历史绑定可在控制台处理。
 
-绑定已有网站的路径时，设置 `CLOUDFLARE_ROUTES=[{"pattern":"example.com/api/*","zone_name":"example.com"}]`，域名需要已有代理 DNS 记录。路由不会剥离路径前缀：此例可直接访问 `/api/holiday`，若使用 `/holiday/*` 等额外前缀，需要另行修改接口路由。
+路由对应的区域需要在同一 Cloudflare 账户中，域名需要已有开启代理的 DNS 记录。部署 Token 需要该区域的 **Zone / Workers Routes / Edit** 和 **Zone / Zone / Read** 权限。
 
-两个变量可以同时设置。请把需要保留的所有域名和路由都纳入配置；Wrangler 发布会按配置管理绑定，不能仅依赖控制台手工添加。配置不自动读取或保留控制台中额外绑定，`keep_vars` 只保留变量。
+请配置所有需要保留的 Workers 路由，Wrangler 按配置管理绑定，`keep_vars` 只保留变量。路由不剥离路径前缀，例如 `example.com/api/*` 可接收 `/api/holiday`；额外前缀需要另行修改接口路由。
 
-`CLOUDFLARE_ROUTES` 中的条目会明确设置 `custom_domain: false`，不接受 `custom_domain: true`。只需要普通 Workers 路由时，请不要设置 `CLOUDFLARE_CUSTOM_DOMAINS`。部署日志会分别打印 `Workers route:` 和 `Custom domain:`，用于核对实际发布的绑定类型。
-
-也可直接在 `workers/wrangler.jsonc` 中添加 `routes` 数组和设置 `workers_dev`，适用于本地或 Cloudflare 构建。GitHub Actions 中非空的 `CLOUDFLARE_ROUTES` 会替换文件中的路由，再追加 `CLOUDFLARE_CUSTOM_DOMAINS`；未设置变量时保留文件配置。流水线生成临时配置，不改写仓库文件。
-
-自定义域名发布所用 API token 还需要对应区域的 **Zone / Zone / Read**、**Zone / DNS / Edit** 权限；普通路由需要 **Zone / Workers Routes / Edit** 和区域读取权限。
+可设置 `CLOUDFLARE_WORKERS_DEV=false` 关闭 Workers.dev 地址。GitHub 环境变量仅作用于该 Actions 流水线；直接通过 Cloudflare 构建时，请使用文件配置。
 
 ## 接口
 

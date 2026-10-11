@@ -11,19 +11,19 @@ export function configureDeployment(base, env) {
         route && typeof route.pattern === 'string' && route.pattern.length > 0 &&
         route.custom_domain !== true &&
         (typeof route.zone_name === 'string' || typeof route.zone_id === 'string'))) {
-      throw new Error('CLOUDFLARE_ROUTES must contain ordinary Workers routes; use CLOUDFLARE_CUSTOM_DOMAINS for custom domains');
+      throw new Error('CLOUDFLARE_ROUTES must contain ordinary Workers routes; custom domains are not supported');
     }
     config.routes = routes.map((route) => typeof route === 'string' ?
       { pattern: route, custom_domain: false } : { ...route, custom_domain: false });
     delete config.route;
   }
-  if (env.CLOUDFLARE_CUSTOM_DOMAINS?.trim()) {
-    const domains = env.CLOUDFLARE_CUSTOM_DOMAINS.split(',').map((domain) => domain.trim());
-    if (!domains.every((domain) => /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(domain))) {
-      throw new Error('CLOUDFLARE_CUSTOM_DOMAINS must contain comma-separated hostnames without protocol, path or wildcard');
+  if (config.routes || config.route) {
+    const routes = config.routes ?? [config.route];
+    if (routes.some((route) => route?.custom_domain === true)) {
+      throw new Error('Custom domains are not supported; configure ordinary Workers routes in wrangler.jsonc');
     }
-    config.routes = [...(config.routes ?? (config.route ? [config.route] : [])),
-      ...domains.map((pattern) => ({ pattern, custom_domain: true }))];
+    config.routes = routes.map((route) => typeof route === 'string' ?
+      { pattern: route, custom_domain: false } : { ...route, custom_domain: false });
     delete config.route;
   }
   if (env.CLOUDFLARE_WORKERS_DEV?.trim()) {
@@ -43,6 +43,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   await writeFile(new URL('.wrangler/deploy.json', import.meta.url), JSON.stringify(config, null, 2));
   console.log('Deployment configuration generated.');
   for (const route of config.routes ?? (config.route ? [config.route] : [])) {
-    console.log(`${route.custom_domain === true ? 'Custom domain' : 'Workers route'}: ${typeof route === 'string' ? route : route.pattern}`);
+    console.log(`Workers route: ${route.pattern}`);
   }
 }
