@@ -14,7 +14,7 @@ test('combines configured routes and custom domains and controls workers.dev', (
     CLOUDFLARE_WORKERS_DEV: 'false',
   });
   assert.deepEqual(result.routes, [
-    { pattern: 'example.com/api/*', zone_name: 'example.com' },
+    { pattern: 'example.com/api/*', zone_name: 'example.com', custom_domain: false },
     { pattern: 'holiday.example.com', custom_domain: true },
     { pattern: 'api.example.com', custom_domain: true },
   ]);
@@ -26,6 +26,16 @@ test('invalid deployment settings stop before publication', () => {
     { CLOUDFLARE_CUSTOM_DOMAINS: 'https://example.com' },
     { CLOUDFLARE_ROUTES: '{}' },
     { CLOUDFLARE_ROUTES: '[{}]' },
+    { CLOUDFLARE_ROUTES: '[{"pattern":"api.example.com","custom_domain":true}]' },
     { CLOUDFLARE_WORKERS_DEV: 'no' },
   ]) assert.throws(() => configureDeployment({}, env));
+});
+
+test('provided hostname wildcard is explicitly deployed as a Workers route', () => {
+  const config = configureDeployment({}, {
+    CLOUDFLARE_ROUTES: '[{"pattern":"holiday-cn.9990326.xyz/*","zone_name":"9990326.xyz"}]',
+  });
+  assert.deepEqual(config.routes, [{
+    pattern: 'holiday-cn.9990326.xyz/*', zone_name: '9990326.xyz', custom_domain: false,
+  }]);
 });

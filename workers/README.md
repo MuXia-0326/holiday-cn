@@ -26,11 +26,24 @@
 
 ### 自定义域名和路由
 
+文件配置入口是 `workers/wrangler.jsonc` 的 `routes`，默认为空数组。将其替换为自己的绑定，例如同时配置自定义域名和路径路由：
+
+```json
+"routes": [
+  { "pattern": "holiday.example.com", "custom_domain": true },
+  { "pattern": "example.com/api/*", "zone_name": "example.com" }
+]
+```
+
+将示例域名替换为真实域名，保留自己需要的条目即可。若直接使用文件配置，请不要设置 GitHub 的 `CLOUDFLARE_ROUTES`，否则该变量会替换文件里的路由。
+
 建议在 Repository variables 设置 `CLOUDFLARE_CUSTOM_DOMAINS=holiday.example.com`，需要仅开放自定义域名时同时设置 `CLOUDFLARE_WORKERS_DEV=false`。域名不带 `https://`、路径或通配符，对应域名区域需要在同一 Cloudflare 账户中。
 
 绑定已有网站的路径时，设置 `CLOUDFLARE_ROUTES=[{"pattern":"example.com/api/*","zone_name":"example.com"}]`，域名需要已有代理 DNS 记录。路由不会剥离路径前缀：此例可直接访问 `/api/holiday`，若使用 `/holiday/*` 等额外前缀，需要另行修改接口路由。
 
 两个变量可以同时设置。请把需要保留的所有域名和路由都纳入配置；Wrangler 发布会按配置管理绑定，不能仅依赖控制台手工添加。配置不自动读取或保留控制台中额外绑定，`keep_vars` 只保留变量。
+
+`CLOUDFLARE_ROUTES` 中的条目会明确设置 `custom_domain: false`，不接受 `custom_domain: true`。只需要普通 Workers 路由时，请不要设置 `CLOUDFLARE_CUSTOM_DOMAINS`。部署日志会分别打印 `Workers route:` 和 `Custom domain:`，用于核对实际发布的绑定类型。
 
 也可直接在 `workers/wrangler.jsonc` 中添加 `routes` 数组和设置 `workers_dev`，适用于本地或 Cloudflare 构建。GitHub Actions 中非空的 `CLOUDFLARE_ROUTES` 会替换文件中的路由，再追加 `CLOUDFLARE_CUSTOM_DOMAINS`；未设置变量时保留文件配置。流水线生成临时配置，不改写仓库文件。
 

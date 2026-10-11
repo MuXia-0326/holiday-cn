@@ -9,10 +9,12 @@ export function configureDeployment(base, env) {
     if (!Array.isArray(routes) || !routes.every((route) =>
       typeof route === 'string' ? route.length > 0 :
         route && typeof route.pattern === 'string' && route.pattern.length > 0 &&
-        (route.custom_domain === true || typeof route.zone_name === 'string' || typeof route.zone_id === 'string'))) {
-      throw new Error('CLOUDFLARE_ROUTES must be a JSON array of route patterns or Wrangler route objects');
+        route.custom_domain !== true &&
+        (typeof route.zone_name === 'string' || typeof route.zone_id === 'string'))) {
+      throw new Error('CLOUDFLARE_ROUTES must contain ordinary Workers routes; use CLOUDFLARE_CUSTOM_DOMAINS for custom domains');
     }
-    config.routes = routes;
+    config.routes = routes.map((route) => typeof route === 'string' ?
+      { pattern: route, custom_domain: false } : { ...route, custom_domain: false });
     delete config.route;
   }
   if (env.CLOUDFLARE_CUSTOM_DOMAINS?.trim()) {
@@ -40,4 +42,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   await mkdir(new URL('.wrangler/', import.meta.url), { recursive: true });
   await writeFile(new URL('.wrangler/deploy.json', import.meta.url), JSON.stringify(config, null, 2));
   console.log('Deployment configuration generated.');
+  for (const route of config.routes ?? (config.route ? [config.route] : [])) {
+    console.log(`${route.custom_domain === true ? 'Custom domain' : 'Workers route'}: ${typeof route === 'string' ? route : route.pattern}`);
+  }
 }
