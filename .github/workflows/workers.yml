@@ -89,6 +89,9 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME || 'holiday-cn-api' }}
+      CLOUDFLARE_CUSTOM_DOMAINS: ${{ vars.CLOUDFLARE_CUSTOM_DOMAINS }}
+      CLOUDFLARE_ROUTES: ${{ vars.CLOUDFLARE_ROUTES }}
+      CLOUDFLARE_WORKERS_DEV: ${{ vars.CLOUDFLARE_WORKERS_DEV }}
     steps:
       - name: Check Cloudflare configuration
         run: |
@@ -110,4 +113,6 @@ jobs:
         run: npm ci
       - name: Publish tested Worker bundle
         working-directory: workers
-        run: npx --no-install wrangler deploy --name "$WORKER_NAME"
+        run: |
+          node deploy-config.mjs
+          npx --no-install wrangler deploy --config .wrangler/deploy.json --name "$WORKER_NAME"

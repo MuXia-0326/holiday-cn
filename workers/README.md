@@ -18,8 +18,23 @@
 | `CLOUDFLARE_WORKER_NAME` | `holiday-cn-api` | 建议首次使用一个新的专用 Worker 名称，避免覆盖已有其他服务 |
 | `UPSTREAM_REPOSITORY` | `NateScarlet/holiday-cn` | 上游 GitHub 仓库，格式为 `owner/repo`，同步其 `master` 分支 |
 | `SYNC_UPSTREAM` | 开启 | 设置为字符串 `false` 可关闭上游同步；仍会发布本仓库数据 |
+| `CLOUDFLARE_CUSTOM_DOMAINS` | 未设置 | 自定义域名，多个用英文逗号分隔，如 `holiday.example.com,api.example.com` |
+| `CLOUDFLARE_ROUTES` | 未设置 | Wrangler 路由 JSON 数组，如 `[{"pattern":"example.com/api/*","zone_name":"example.com"}]` |
+| `CLOUDFLARE_WORKERS_DEV` | 使用仓库配置 | 设置 `true` 或 `false`，控制 Workers.dev 地址是否启用 |
 
-然后进入 **Actions → Workers API → Run workflow**，选择 `master`。发布成功后的地址可在部署日志和 Cloudflare 控制台查看，一般为 `https://holiday-cn-api.<你的子域>.workers.dev`。此实现使用 Workers.dev，不自动修改域名路由。
+然后进入 **Actions → Workers API → Run workflow**，选择 `master`。发布成功后的地址可在部署日志和 Cloudflare 控制台查看，一般为 `https://holiday-cn-api.<你的子域>.workers.dev`。
+
+### 自定义域名和路由
+
+建议在 Repository variables 设置 `CLOUDFLARE_CUSTOM_DOMAINS=holiday.example.com`，需要仅开放自定义域名时同时设置 `CLOUDFLARE_WORKERS_DEV=false`。域名不带 `https://`、路径或通配符，对应域名区域需要在同一 Cloudflare 账户中。
+
+绑定已有网站的路径时，设置 `CLOUDFLARE_ROUTES=[{"pattern":"example.com/api/*","zone_name":"example.com"}]`，域名需要已有代理 DNS 记录。路由不会剥离路径前缀：此例可直接访问 `/api/holiday`，若使用 `/holiday/*` 等额外前缀，需要另行修改接口路由。
+
+两个变量可以同时设置。请把需要保留的所有域名和路由都纳入配置；Wrangler 发布会按配置管理绑定，不能仅依赖控制台手工添加。配置不自动读取或保留控制台中额外绑定，`keep_vars` 只保留变量。
+
+也可直接在 `workers/wrangler.jsonc` 中添加 `routes` 数组和设置 `workers_dev`，适用于本地或 Cloudflare 构建。GitHub Actions 中非空的 `CLOUDFLARE_ROUTES` 会替换文件中的路由，再追加 `CLOUDFLARE_CUSTOM_DOMAINS`；未设置变量时保留文件配置。流水线生成临时配置，不改写仓库文件。
+
+自定义域名发布所用 API token 还需要对应区域的 **Zone / Zone / Read**、**Zone / DNS / Edit** 权限；普通路由需要 **Zone / Workers Routes / Edit** 和区域读取权限。
 
 ## 接口
 

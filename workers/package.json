@@ -6,7 +6,7 @@
     "build": "node build.mjs",
     "test": "npm run build && node --test",
     "dev": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && node deploy-config.mjs && wrangler deploy --config .wrangler/deploy.json"
   },
   "devDependencies": {
     "wrangler": "4.149.0"
