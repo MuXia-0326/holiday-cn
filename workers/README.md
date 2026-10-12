@@ -100,6 +100,14 @@
 
 ## 本地验证和发布
 
+### Cloudflare Git 构建配置
+
+连接 Git 仓库时，将根目录设为 `workers`，构建命令设为 `npm run build`，部署命令设为 `npx wrangler deploy`。仓库根目录的年份 JSON 和 `schema.json` 必须保留在检出的仓库中。
+
+`src/generated/data.mjs` 是被忽略的构建产物，首次检出时不存在；部署前必须生成，否则会报 `Could not resolve "./generated/data.mjs"`。Wrangler 配置也包含自动生成步骤，方便直接在本地运行 `npx wrangler deploy`。Cloudflare Git 构建仍应明确填写上述构建命令。
+
+GitHub Actions 使用已通过测试的数据产物，生成的 `.wrangler/deploy.json` 会移除自动构建步骤，避免在仅包含 Worker 产物的部署阶段重新读取年份源文件。
+
 需要 Node.js 22：
 
 ```sh

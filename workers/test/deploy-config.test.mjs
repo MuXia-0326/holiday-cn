@@ -2,6 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { configureDeployment } from '../deploy-config.mjs';
 
+test('artifact deployment skips rebuilding without changing source configuration', () => {
+  const base = { build: { command: 'node build.mjs' }, main: 'src/index.mjs' };
+  const config = configureDeployment(base, {});
+  assert.equal(Object.hasOwn(config, 'build'), false);
+  assert.deepEqual(base.build, { command: 'node build.mjs' });
+  assert.equal(config.main, base.main);
+});
+
 test('retains repository routes when no override is supplied', () => {
   const base = { routes: [{ pattern: 'api.example.com/*', zone_name: 'example.com' }], workers_dev: false };
   assert.deepEqual(configureDeployment(base, {}).routes, [{ ...base.routes[0], custom_domain: false }]);

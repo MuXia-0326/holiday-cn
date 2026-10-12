@@ -4,6 +4,9 @@ import { resolve } from 'node:path';
 
 export function configureDeployment(base, env) {
   const config = structuredClone(base);
+  // This configuration deploys the already validated artifact from CI.
+  // The artifact contains generated data but not the repository's source JSON.
+  delete config.build;
   if (env.CLOUDFLARE_ROUTES?.trim()) {
     const routes = JSON.parse(env.CLOUDFLARE_ROUTES);
     if (!Array.isArray(routes) || !routes.every((route) =>
