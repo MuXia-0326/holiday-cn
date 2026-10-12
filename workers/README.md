@@ -79,6 +79,8 @@
 
 通过重复的 `date` 参数传入一个或多个日期：`GET /api/holidays?date=2026-10-01&date=2026-10-10`。
 
+也支持逗号分隔：`GET /api/holidays?date=2026-10-01,2026-10-10`。两种方式可以混用，日期两侧空格会被去除。
+
 ```json
 [
   { "date": "2026-10-01", "weekday": 4, "isWeekend": false, "isHoliday": true },

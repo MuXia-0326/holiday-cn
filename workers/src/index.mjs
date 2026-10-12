@@ -42,10 +42,10 @@ export default {
       return json(request, result);
     }
     if (path === '/api/holidays') {
-      const dates = url.searchParams.getAll('date');
+      const dates = url.searchParams.getAll('date').flatMap((value) => value.split(',').map((date) => date.trim()));
       const results = dates.map(lookupDate);
       if (!dates.length || results.some((result) => !result)) {
-        return json(request, { error: 'Provide one or more valid dates using repeated date parameters in YYYY-MM-DD format' }, 400);
+        return json(request, { error: 'Provide one or more valid dates using comma-separated or repeated date parameters in YYYY-MM-DD format' }, 400);
       }
       return json(request, results);
     }

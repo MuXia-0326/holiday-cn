@@ -74,11 +74,25 @@ test('batch date API preserves input order, duplicate dates and cross-year resul
 });
 
 test('batch date API rejects missing input or any invalid date', async () => {
-  for (const query of ['', '?date=', '?date=2026-01-01&date=', '?date=2026-01-01&date=2026-02-29', '?date=2026-2-01']) {
+  for (const query of ['', '?date=', '?date=2026-01-01&date=', '?date=2026-01-01&date=2026-02-29', '?date=2026-2-01',
+    '?date=2026-10-01,', '?date=,2026-10-01', '?date=2026-10-01,,2026-10-10', '?date=2026-10-01,2026-02-29']) {
     const response = request(`/api/holidays${query}`);
     assert.equal(response.status, 400, query);
     assert.equal(response.headers.get('Cache-Control'), 'no-store');
     assert.equal(typeof (await response.json()).error, 'string');
+  }
+});
+
+test('batch date API accepts comma-separated, encoded and mixed date parameters', async () => {
+  const expected = await request('/api/holidays?date=2026-10-01&date=2026-10-10&date=2026-10-01').json();
+  for (const query of [
+    '?date=2026-10-01,2026-10-10,2026-10-01',
+    '?date=2026-10-01%2C%202026-10-10%2C2026-10-01',
+    '?date=2026-10-01,2026-10-10&date=2026-10-01',
+  ]) {
+    const response = request(`/api/holidays${query}`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), expected);
   }
 });
 
