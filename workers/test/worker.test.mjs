@@ -42,21 +42,44 @@ test('HEAD, preflight and unsupported methods follow HTTP semantics', async () =
   assert.equal(request('/2026.json', 'POST').headers.get('Allow'), 'GET, HEAD, OPTIONS');
 });
 
-test('date API distinguishes holidays, adjusted workdays, weekends and ordinary workdays', async () => {
-  for (const [date, expected] of [
-    ['2026-01-01', { isHoliday: true, isOffDay: true, isWorkday: false, isAdjustedWorkday: false, name: '元旦' }],
-    ['2026-01-04', { isHoliday: false, isOffDay: false, isWorkday: true, isAdjustedWorkday: true, name: '元旦' }],
-    ['2026-01-10', { isHoliday: false, isOffDay: true, isWorkday: false, isAdjustedWorkday: false, name: null }],
-    ['2026-01-12', { isHoliday: false, isOffDay: false, isWorkday: true, isAdjustedWorkday: false, name: null }],
+test('date API returns only date information and the announcement holiday flag', async () => {
+  for (const [date, weekday, isWeekend, isHoliday] of [
+    ['2026-01-01', 4, false, true],
+    ['2026-01-02', 5, false, true],
+    ['2026-01-04', 0, true, false],
+    ['2026-01-10', 6, true, false],
+    ['2026-01-12', 1, false, false],
   ]) {
     const response = request(`/api/holiday?date=${date}`);
     assert.equal(response.status, 200);
-    const data = await response.json();
-    assert.equal(data.date, date);
-    assert.equal(data.dataAvailable, true);
-    for (const [key, value] of Object.entries(expected)) assert.equal(data[key], value, `${date}: ${key}`);
+    assert.deepEqual(await response.json(), { date, weekday, isWeekend, isHoliday });
   }
   assert.equal(await request('/api/holiday?date=2026-01-01', 'HEAD').text(), '');
+});
+
+test('batch date API preserves input order, duplicate dates and cross-year results', async () => {
+  const dates = ['2026-01-04', '2025-10-01', '2026-01-01', '2026-01-04', '2099-01-01'];
+  const path = `/api/holidays?${dates.map((date) => `date=${date}`).join('&')}`;
+  const response = request(path);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), await Promise.all(dates.map((date) => request(`/api/holiday?date=${date}`).json())));
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), '*');
+  assert.equal(response.headers.get('Cache-Control'), 'public, max-age=300');
+  assert.deepEqual(await request('/api/holidays?date=2026-01-01').json(), [await request('/api/holiday?date=2026-01-01').json()]);
+  assert.equal(await request(path, 'HEAD').text(), '');
+  assert.equal(request(path, 'OPTIONS').status, 204);
+  assert.equal(request(path, 'POST').status, 405);
+  const index = await request('/').json();
+  assert.ok(index.endpoints.includes('/api/holidays?date=YYYY-MM-DD&date=YYYY-MM-DD'));
+});
+
+test('batch date API rejects missing input or any invalid date', async () => {
+  for (const query of ['', '?date=', '?date=2026-01-01&date=', '?date=2026-01-01&date=2026-02-29', '?date=2026-2-01']) {
+    const response = request(`/api/holidays${query}`);
+    assert.equal(response.status, 400, query);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.equal(typeof (await response.json()).error, 'string');
+  }
 });
 
 test('date API rejects impossible dates, missing dates and ambiguous input', () => {
@@ -68,12 +91,12 @@ test('date API rejects impossible dates, missing dates and ambiguous input', () 
   assert.equal(request('/api/holiday?date=2024-02-29').status, 200);
 });
 
-test('unpublished or missing years have unknown holiday and workday status', async () => {
+test('unpublished or missing years have unknown holiday status', async () => {
   const lookup = createDateLookup({ '2027': { papers: [], days: [] } });
   for (const date of ['2027-01-01', '2099-01-01']) {
     const data = lookup(date);
-    assert.equal(data.dataAvailable, false);
-    for (const key of ['isHoliday', 'isOffDay', 'isWorkday', 'isAdjustedWorkday']) assert.equal(data[key], null);
+    assert.equal(data.isHoliday, null);
+    assert.deepEqual(Object.keys(data), ['date', 'weekday', 'isWeekend', 'isHoliday']);
   }
   const response = request('/api/holiday?date=2099-01-01');
   assert.equal(response.status, 200);
@@ -87,8 +110,9 @@ test('cross-year records and newer announcements override weekend defaults and o
   });
   const data = lookup('2025-12-28');
   assert.equal(data.isWeekend, true);
-  assert.equal(data.isOffDay, false);
-  assert.equal(data.isAdjustedWorkday, true);
-  assert.equal(data.name, '新安排');
-  assert.equal(data.sourceYear, 2026);
+  assert.equal(data.isHoliday, false);
+  const crossYear = createDateLookup({
+    '2026': { papers: ['newer'], days: [{ date: '2025-12-28', name: '跨年安排', isOffDay: true }] },
+  });
+  assert.equal(crossYear('2025-12-28').isHoliday, true);
 });

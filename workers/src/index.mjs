@@ -33,13 +33,21 @@ export default {
     const path = url.pathname;
     const years = Object.keys(holidays).map(Number).sort((a, b) => a - b);
     if (path === '/' || path === '/api/years') {
-      return json(request, { years, endpoints: ['/YYYY.json', '/api/holidays/YYYY', '/api/holiday?date=YYYY-MM-DD', '/schema.json'] });
+      return json(request, { years, endpoints: ['/YYYY.json', '/api/holidays/YYYY', '/api/holiday?date=YYYY-MM-DD', '/api/holidays?date=YYYY-MM-DD&date=YYYY-MM-DD', '/schema.json'] });
     }
     if (path === '/api/holiday') {
       const dates = url.searchParams.getAll('date');
       const result = dates.length === 1 ? lookupDate(dates[0]) : null;
       if (!result) return json(request, { error: 'Provide exactly one valid date in YYYY-MM-DD format' }, 400);
       return json(request, result);
+    }
+    if (path === '/api/holidays') {
+      const dates = url.searchParams.getAll('date');
+      const results = dates.map(lookupDate);
+      if (!dates.length || results.some((result) => !result)) {
+        return json(request, { error: 'Provide one or more valid dates using repeated date parameters in YYYY-MM-DD format' }, 400);
+      }
+      return json(request, results);
     }
     if (path === '/schema.json') return json(request, schema);
     const match = /^(?:\/(\d{4})\.json|\/api\/holidays\/(\d{4}))$/.exec(path);
